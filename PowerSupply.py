@@ -14,8 +14,16 @@ class PowerSupply(object):
         self.identity = identity
         if self.identity=='':
             self.identity = self.get_id()
-        self.power_supply = self.rm.open_resource(self.identity)               
-    
+        self.power_supply = self.rm.open_resource(self.identity)
+
+    def get_id(self):
+        for device_id in self.device_list:
+            if (len(device_id.split('::')) == 5 and
+                device_id.split('::')[3].startswith('DP')):
+                return device_id    
+        print ('Fuente de poder no detectada')
+        return ''
+            
     def supply_voltage(self):
         return float(self.power_supply.query(':MEAS:VOLT? CH3'))
 
@@ -28,12 +36,5 @@ class PowerSupply(object):
     def off(self):
         self.power_supply.write(':OUTP CH3, OFF')
 
-    def voltage_max(self, voltage):
-        self.power_supply.write(":APPL CH3,"+str(voltage))
-        
-    def current_max(self, current):
-        self.power_supply.write(":APPL CH3,"+str(current))
-
-     
-    
-
+    def voltage_current_max(self, voltage, current):
+        self.power_supply.write(":APPL CH3,"+str(voltage)+","+str(current))
