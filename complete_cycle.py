@@ -51,8 +51,8 @@ def readdaq():
     task.stop()
     return I
 
-def set_power_supply():
-    power_supply.voltage_current_max(V_MAX, I_MAX)
+# def set_power_supply():
+#     power_supply.voltage_current_max(V_MAX, I_MAX)
 
 def set_electronic_load():
     electronic_load.voltage_min(V_MIN)
@@ -68,13 +68,14 @@ for i in range(N_MEASUREMENTS):         #Tomar lecturas de la batería para esti
     power_supply.supply_voltage()
     power_supply.supply_current()
 
-number_cycle = 0
+cycle_number = 0
     
-while number_cycle < CYCLES:
-    set_power_supply()                  
+while cycle_number < CYCLES:
+    power_supply.voltage_current_max(V_MAX, I_MAX)                 
     power_supply.on()
+    # COMIENZA LA CARGA PRIMERO
     while I > I_MIN:
-            with open('data\\' + "CARGA" + "_" + str(number_cycle) + "_" + run_time() + '.txt', 'w') as file:
+            with open('data\\' + "CARGA" + "_" + str(cycle_number) + "_" + run_time() + '.txt', 'w') as file:
                 file.write(DATA_LINE)
                 file.write("\n")
                 readdaq()
@@ -88,7 +89,7 @@ while number_cycle < CYCLES:
     electronic_load.on()
     set_electronic_load()
     while V > V_MIN:
-            with open('data\\' + "DESCARGA"+"_" + str(number_cycle) + "_" + run_time() + '.txt', 'w') as file:
+            with open('data\\' + "DESCARGA"+"_" + str(cycle_number) + "_" + run_time() + '.txt', 'w') as file:
                 file.write(DATA_LINE)
                 file.write("\n")
                 readdaq()
@@ -97,5 +98,4 @@ while number_cycle < CYCLES:
                 electronic_load.eload_voltage_voltage()
                 electronic_load.eload_current_current()
     electronic_load.off()   
-    number_cycle=+1 
-
+    cycle_number =+ 1

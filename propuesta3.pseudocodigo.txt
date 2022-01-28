@@ -1,0 +1,64 @@
+CICLO COMPLETO
+
+inputs = discharge_current, cutoff_current, discharge_voltage_cutoff, n, charge_current, charge_voltage, time_cutoff
+outputs = file(V, I, temperature, time)
+number_cycle = 0
+k = 1
+listaV = []
+
+#Lectura de voltaje de la batería en circuito abierto para estimar el estado de carga
+for i in range(n):
+	V = read.V	
+	I = read.I
+	temperature = read.temperature
+	write.file(V, I, temperature, time)
+	wait(1)
+end for
+
+while number_cycle < cycles:
+	power_supply.ON
+	set.charge_current
+	set.charge_voltage
+	set.cutoff_current
+	while charge_current > cutoff_current and time <time_cutoff:
+		V = read.V
+		I = read.I
+		temperature = read.temperature
+		time = ejecution time
+		write.file(V, I, temperature, time)
+		wait(1)
+	end while
+	power_supply.OFF
+		
+	listaV[k-1] = read.V
+	while e > voltage_error:
+		V = read.V
+		append V on listaV
+		e = listaV[k] - listaV[k-1]
+		movmean(listaV,50)
+		wait(1)
+	end while
+	
+	
+	electronic_load.ON
+	set.discharge_voltage_cutoff
+	set.discharge_current
+	while discharge_voltage_cutoff > V and time <time_cutoff:
+		V = read.V
+		I = read.I
+		temperature = read.temperature
+		time = read.time
+		write.file(V, I, temperature, time)
+		wait(1)
+	end while		
+	electronic_load.OFF
+	
+	V[k-1] = read.V
+	while e > voltage_error:
+		V = read.V
+		e = V[k] - V[k-1]
+		wait(1)
+	end while
+	number_cycle=+1
+
+end while
