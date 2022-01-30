@@ -33,7 +33,7 @@ class ElectronicLoad(object):
         return float(self.electronic_load.query(':MEAS:VOLT?'))
 
     def eload_current(self):
-        return float(self.query(':MEAS:CURR?'))   
+        return float(self.electronic_load.query(':MEAS:CURR?'))   
 
     def on(self):
         self.electronic_load.write(':SOUR:INP:STAT ON')

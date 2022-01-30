@@ -38,3 +38,11 @@ class PowerSupply(object):
 
     def voltage_current_max(self, voltage, current):
         self.power_supply.write(":APPL CH3,"+str(voltage)+","+str(current))
+
+    def sensor_ch1(self):
+        self.power_supply.write(':OUTP CH1, ON')
+        self.power_supply.write(':APPL CH1,15.0,1.0')
+
+    def sensor_ch2(self):
+        self.power_supply.write(':OUTP CH2, ON')
+        self.power_supply.write(':APPL CH2,15.0,1.0')
