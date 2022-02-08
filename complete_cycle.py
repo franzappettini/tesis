@@ -15,17 +15,28 @@ ser = serial.Serial ( 'COM5' )
 temp = ser.readline ()
 inicio = time.time()
 
-storedData = []
+storedDataI = []
+storeDataV = []
 
-def moving_average(newData ,listSize):
+def moving_averageI(newData ,listSize):
     sum = 0
-    storedData.append(newData)
-    if(len(storedData) >= listSize):
-        storedData.pop(0)
-    for i in range(0, len(storedData)):
-        sum = sum + storedData[i]
-    average = sum/len(storedData)
+    storedDataI.append(newData)
+    if(len(storedDataI) >= listSize):
+        storedDataI.pop(0)
+    for i in range(0, len(storedDataI)):
+        sum = sum + storedDataI[i]
+    average = sum/len(storedDataI)
     return average 
+
+def moving_averageV(newData ,listSize):
+    sum = 0
+    storeDataV.append(newData)
+    if(len(storeDataV) >= listSize):
+        storeDataV.pop(0)
+    for i in range(0, len(storeDataV)):
+        sum = sum + storeDataV[i]
+    average = sum/len(storeDataV)
+    return average  
 
 def get_setting(setting):
     return configFile[config_profile][setting]
@@ -69,9 +80,10 @@ def readdaq():
         task.ai_channels.add_ai_voltage_chan("cDAQ1Mod1/ai0:1", terminal_config=TerminalConfiguration.DIFFERENTIAL)
         value = task.read()
         I = (value[1]+0.022795518411719402)/0.0847029
-        if(len(value) > 2):
-            value.pop(2)
-        value.append(moving_average(I, 100))
+        if(len(value) > 3):
+            value.pop(3)
+        value.append(moving_averageI(I, 100))
+        value.append(moving_averageV(value[0], 100))
         #print(value)
         time.sleep(0.1)
     return value
@@ -115,30 +127,41 @@ while cycle_number < CYCLES:
     file.write(DATA_LINE_CHARGE + '\n')
     I = (value[1]+0.022795518411719402)/0.0847029
     power_supply.on()
-    time.sleep(4)
     values = readdaq()
     smoothed_i = values[2]
+    smoothed_v = values[3]
     while smoothed_i > I_MIN:
         save_file_charge(file)
         values = readdaq()
         smoothed_i = values[2]
-        print(smoothed_i)
-         
-    power_supply.off()
-    V_0 = values[0]
-    while V_0 > V_E1:
-        V_0 = values[0]
-        print(V_0)
-    file.close()
-    #Aquí va la estabilización de voltaje 
+        smoothed_v = values [3]
+        print(values[0], values[1],smoothed_i, smoothed_v)
+    power_supply.off()    
+    while smoothed_v > V_E1:
+        save_file_charge(file)
+        values = readdaq()
+        smoothed_v = values [3]
+        print(smoothed_v)      
+    file.close() 
+
     file = open("DESCARGA" + "_" + str(cycle_number)+ "_"+ run_time() + '.txt', 'a', newline='')
     file.write(DATA_LINE_DISCHARGE + '\n')
     set_electronic_load()
     electronic_load.on()
-    while value[0] > V_MIN:
-         save_file_discharge(file)     
+    values = readdaq()
+    smoothed_v = values[3]
+    while values[3] > V_MIN:
+         save_file_discharge(file)
+         values = readdaq()
+         print(values[3])     
     electronic_load.off()
-    while values[0] > V_E2:
-        print(value[0])  
+
+    values = readdaq()
+    smoothed_v = values[3]    
+    while smoothed_v > V_E2:
+        save_file_discharge(file)
+        values = readdaq()
+        smoothed_v = values [3]
+        print(smoothed_v)  
     file.close()     
     cycle_number=+1 
