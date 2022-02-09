@@ -112,7 +112,7 @@ def save_file_discharge(file):
     file.write(str(valuestr)+','+str(run_time())+','+str(time.time() - inicio)+','+str(electronic_load.eload_voltage())+','+str(electronic_load.eload_current())+','+str(temp.decode('utf-8')))
     file.flush()
     
-file = open("SOC" + "_"+ run_time() + '.txt', 'a', newline='')
+file = open("SOC" + "_"+ run_time() + '.txt', 'w', newline='')
 
 for i in range(N_MEASUREMENTS):
     value = readdaq()
@@ -123,42 +123,42 @@ file.close()
 
 while cycle_number < CYCLES:
     set_power_supply()                  
-    file = open("CARGA" + "_" + str(cycle_number)+ "_"+ run_time() + '.txt', 'a', newline='')
+    file = open("CARGA" + "_" + str(cycle_number)+ "_"+ run_time() + '.txt', 'w', newline='')
     file.write(DATA_LINE_CHARGE + '\n')
     I = (value[1]+0.022795518411719402)/0.0847029
     power_supply.on()
     values = readdaq()
     smoothed_i = values[2]
     smoothed_v = values[3]
-    while smoothed_i > I_MIN:
+    while smoothed_i > I_MIN:    #CARGA
         save_file_charge(file)
         values = readdaq()
         smoothed_i = values[2]
         smoothed_v = values [3]
         print(values[0], values[1],smoothed_i, smoothed_v)
     power_supply.off()    
-    while smoothed_v > V_E1:
+    while smoothed_v > V_E1:    #ESTABILIZACIÓN
         save_file_charge(file)
         values = readdaq()
         smoothed_v = values [3]
         print(smoothed_v)      
     file.close() 
 
-    file = open("DESCARGA" + "_" + str(cycle_number)+ "_"+ run_time() + '.txt', 'a', newline='')
+    file = open("DESCARGA" + "_" + str(cycle_number)+ "_"+ run_time() + '.txt', 'w', newline='')
     file.write(DATA_LINE_DISCHARGE + '\n')
     set_electronic_load()
     electronic_load.on()
     values = readdaq()
     smoothed_v = values[3]
-    while values[3] > V_MIN:
+    smoothed_i = values[2]
+    while values[3] > V_MIN:    #DESCARGA
          save_file_discharge(file)
          values = readdaq()
+         smoothed_i = values[2]
+         smoothed_v = values[3]
          print(values[3])     
-    electronic_load.off()
-
-    values = readdaq()
-    smoothed_v = values[3]    
-    while smoothed_v > V_E2:
+    electronic_load.off()   
+    while smoothed_v < V_E2:
         save_file_discharge(file)
         values = readdaq()
         smoothed_v = values [3]
