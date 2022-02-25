@@ -12,7 +12,7 @@ import configparser
 from configparser import ConfigParser
 import numpy as np
 
-ser = serial.Serial ( 'COM5' )
+ser = serial.Serial ( 'COM3' )
 temp = ser.readline ()
 inicio = time.time()
 
@@ -111,7 +111,7 @@ def save_file_discharge(file):
     valuestr = ','.join(map(str,value))
     file.write(str(valuestr)+','+str(run_time())+','+str(time.time() - inicio)+','+str(electronic_load.eload_voltage())+','+str(electronic_load.eload_current())+','+str(temp.decode('utf-8')))
     file.flush()
-    
+
 file = open("SOC" + "_"+ run_time() + '.txt', 'w', newline='')
 
 for i in range(N_MEASUREMENTS):
@@ -131,48 +131,56 @@ while cycle_number < CYCLES:
     values = readdaq()
     smoothed_i = values[2]
     smoothed_v = values[3]
+    time.sleep(3)
     while smoothed_i > I_MIN:    #CARGA
         save_file_charge(file)
         values = readdaq()
+        temp = ser.readline ()
         smoothed_i = values[2]
         smoothed_v = values[3]
         print(values[0], values[1],smoothed_i, smoothed_v)
     power_supply.off()  
     E = 1
-    while E > V_E:
-        save_file_charge(file)  
+    save_file_charge(file)
+    while E > V_E:                          #ESTABILIZACIÓN
+        save_file_charge(file) 
+        temp = ser.readline () 
         listVdiff = []
         i = 0
-        window_size = 10
+        window_size = 100
         sma_listVdiff = []
         abs_smadiff = []
         values = readdaq()
         smoothed_v = values[3]
         listV = []
-        while i <30:  
+        while i <300:  
+            save_file_charge(file)
             values= readdaq()
+            temp = ser.readline ()
             listV.append(values[3])
             i+=1
         listVdiff = [listV[n]-listV[n-1] for n in range(1,len(listV))]  
         abs_smadiff = [abs(ele) for ele in listVdiff]
-
+        window_size = 100
+        i=0
+        sma_listVdiff = []
         while i< len(abs_smadiff)- window_size+1:
+            save_file_charge(file)
+            temp = ser.readline ()
             window = abs_smadiff[i : i + window_size]
-            print(window)
-            window_average = round(sum(window)/window_size,2)
+            window_average = sum(window)/window_size
             sma_listVdiff.append(window_average)
             i+=1
         print(sma_listVdiff)
 
-        def Average (abs_smadiff):
-            return sum(abs_smadiff)/len(abs_smadiff)	
-        E = Average(abs_smadiff)
+        def Average (sma_listVdiff):
+            save_file_charge(file)
+            return sum(sma_listVdiff)/len(sma_listVdiff)	
+        E = Average(sma_listVdiff)
+        save_file_charge(file)
         listE = []
         listE.append(E)
-        print(E)
-        
-
-    #V_E()    #ESTABILIZACIÓN
+        print(E)      
     file.close() 
 
     file = open("DESCARGA" + "_" + str(cycle_number)+ "_"+ run_time() + '.txt', 'w', newline='')
@@ -182,14 +190,55 @@ while cycle_number < CYCLES:
     values = readdaq()
     smoothed_v = values[3]
     smoothed_i = values[2]
-    while values[3] > V_MIN:    #DESCARGA
-         save_file_discharge(file)
-         values = readdaq()
-         smoothed_i = values[2]
-         smoothed_v = values[3]
-         print(values[3])     
+    I = I*(-1)
+    while values[3] > V_MIN:    #DESCARGA        
+        I = I*(-1)
+        save_file_discharge(file)
+        values = readdaq()
+        temp = ser.readline ()
+        smoothed_i = values[2]
+        smoothed_v = values[3]
+        print(values[3])     
     electronic_load.off()  
        
-    V_E()                   #ESTABILIZACIÓN
+    E = 1
+    while E > V_E:
+        save_file_discharge(file)  
+        temp = ser.readline ()
+        listVdiff = []
+        i = 0
+        window_size = 100
+        sma_listVdiff = []
+        abs_smadiff = []
+        values = readdaq()
+        smoothed_v = values[3]
+        listV = []
+        while i <300: 
+            save_file_discharge(file) 
+            values= readdaq()
+            temp = ser.readline ()
+            listV.append(values[3])
+            i+=1
+        listVdiff = [listV[n]-listV[n-1] for n in range(1,len(listV))]  
+        abs_smadiff = [abs(ele) for ele in listVdiff]
+        window_size = 100
+        i=0
+        sma_listVdiff = []
+        while i< len(abs_smadiff)- window_size+1:
+            save_file_discharge(file)
+            temp = ser.readline ()
+            window = abs_smadiff[i : i + window_size]
+            window_average = sum(window)/window_size
+            sma_listVdiff.append(window_average)
+            i+=1
+        print(sma_listVdiff)
+
+        def Average (sma_listVdiff):
+            return sum(sma_listVdiff)/len(sma_listVdiff)	
+        E = Average(sma_listVdiff)
+        save_file_discharge(file)
+        listE = []
+        listE.append(E)
+        print(E)                  #ESTABILIZACIÓN
     file.close()     
     cycle_number=+1 
