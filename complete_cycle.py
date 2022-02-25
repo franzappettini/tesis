@@ -102,6 +102,7 @@ cycle_number = 0
 
 def save_file_charge(file):
     value = readdaq()
+    print(value[0], value[1], value[2], value[3])
     valuestr = ','.join(map(str,value))
     file.write(str(valuestr)+','+str(run_time())+','+str(time.time() - inicio)+','+str(power_supply.supply_voltage())+','+str(power_supply.supply_current())+','+str(temp.decode('utf-8')))
     file.flush()
@@ -123,40 +124,45 @@ file.close()
 values = readdaq() 
 
 while cycle_number < CYCLES:
-    set_power_supply()                  
+
+    #CARGA
+    set_power_supply()        
     file = open("CARGA" + "_" + str(cycle_number)+ "_"+ run_time() + '.txt', 'w', newline='')
     file.write(DATA_LINE_CHARGE + '\n')
-    I = (value[1]+0.022795518411719402)/0.0847029
+    # I = (value[1]+0.022795518411719402)/0.0847029
     power_supply.on()
-    values = readdaq()
-    smoothed_i = values[2]
-    smoothed_v = values[3]
+    # values = readdaq()
+    # smoothed_i = values[2]
+    # smoothed_v = values[3]
     time.sleep(3)
-    while smoothed_i > I_MIN:    #CARGA
-        save_file_charge(file)
-        values = readdaq()
+
+    while smoothed_i > I_MIN:
         temp = ser.readline ()
-        smoothed_i = values[2]
-        smoothed_v = values[3]
-        print(values[0], values[1],smoothed_i, smoothed_v)
+        save_file_charge(file)
+        # values = readdaq()
+        # smoothed_i = values[2]
+        # smoothed_v = values[3]
+        # print(values[0], values[1], values[2], values[3])
     power_supply.off()  
     E = 1
     save_file_charge(file)
-    while E > V_E:                          #ESTABILIZACIÓN
-        save_file_charge(file) 
+
+    #ESTABILIZACIÓN
+    while E > V_E:
         temp = ser.readline () 
+        save_file_charge(file) 
         listVdiff = []
         i = 0
         window_size = 100
         sma_listVdiff = []
         abs_smadiff = []
-        values = readdaq()
-        smoothed_v = values[3]
+        # values = readdaq()
+        # smoothed_v = values[3]
         listV = []
         while i <300:  
+            temp = ser.readline ()
             save_file_charge(file)
             values= readdaq()
-            temp = ser.readline ()
             listV.append(values[3])
             i+=1
         listVdiff = [listV[n]-listV[n-1] for n in range(1,len(listV))]  
@@ -164,7 +170,7 @@ while cycle_number < CYCLES:
         window_size = 100
         i=0
         sma_listVdiff = []
-        while i< len(abs_smadiff)- window_size+1:
+        while i < len(abs_smadiff)- window_size+1:
             save_file_charge(file)
             temp = ser.readline ()
             window = abs_smadiff[i : i + window_size]
@@ -174,7 +180,7 @@ while cycle_number < CYCLES:
         print(sma_listVdiff)
 
         def Average (sma_listVdiff):
-            save_file_charge(file)
+            # save_file_charge(file)
             return sum(sma_listVdiff)/len(sma_listVdiff)	
         E = Average(sma_listVdiff)
         save_file_charge(file)
@@ -188,30 +194,32 @@ while cycle_number < CYCLES:
     set_electronic_load()
     electronic_load.on()
     values = readdaq()
-    smoothed_v = values[3]
-    smoothed_i = values[2]
-    I = I*(-1)
-    while values[3] > V_MIN:    #DESCARGA        
-        I = I*(-1)
-        save_file_discharge(file)
+    # smoothed_v = values[3]
+    # smoothed_i = values[2]
+    # I = I*(-1)
+
+    #DESCARGA
+    while values[3] > V_MIN:
+        # I = I*(-1)
         values = readdaq()
         temp = ser.readline ()
-        smoothed_i = values[2]
-        smoothed_v = values[3]
+        save_file_discharge(file)
+        # smoothed_i = values[2]
+        # smoothed_v = values[3]
         print(values[3])     
     electronic_load.off()  
        
     E = 1
     while E > V_E:
-        save_file_discharge(file)  
         temp = ser.readline ()
+        save_file_discharge(file)  
         listVdiff = []
         i = 0
         window_size = 100
         sma_listVdiff = []
         abs_smadiff = []
-        values = readdaq()
-        smoothed_v = values[3]
+        # values = readdaq()
+        # smoothed_v = values[3]
         listV = []
         while i <300: 
             save_file_discharge(file) 
