@@ -1,3 +1,6 @@
+from importlib.resources import read_binary
+from tkinter import E
+from tracemalloc import Statistic
 import pyvisa
 import time 
 import os
@@ -11,6 +14,7 @@ from nidaqmx.constants import (TerminalConfiguration)
 import configparser
 from configparser import ConfigParser
 import numpy as np 
+import statistics
 
 ser = serial.Serial ( 'COM3' )
 temp = ser.readline ()
@@ -41,8 +45,7 @@ def moving_averageV(newData ,listSize):
     for i in range(0, len(storedDataV)):
         sum = sum + storedDataV[i]
     average = sum/len(storedDataV)
-    return average    
-
+    return average
 
 def get_setting(setting):
     return configFile[config_profile][setting]
@@ -70,7 +73,9 @@ V_MIN = float(get_setting('V_MIN'))
 CYCLES = float(get_setting('CYCLES'))
 DATA_LINE_CHARGE = str(get_setting('DATA_LINE_CHARGE'))
 DATA_LINE_DISCHARGE = str(get_setting('DATA_LINE_DISCHARGE'))
+DATA_LINE_ERROR = str(get_setting('DATA_LINE_ERROR'))
 N_MEASUREMENTS = int(get_setting('N_MEASUREMENTS'))
+N = float(get_setting('N'))
 V_E = float(get_setting('V_E'))
 
 value = [0,0]
@@ -86,22 +91,8 @@ def readdaq():
         task.ai_channels.add_ai_voltage_chan("cDAQ1Mod1/ai0:1", terminal_config=TerminalConfiguration.DIFFERENTIAL)
         value = task.read()
         I = (value[1]+0.022795518411719402)/0.0847029
-        value.append(moving_averageI(I, 100))
-        value.append(moving_averageV(value[0], 100))     
-        i = 0 
-        listVdiff = [storedDataV[n]-storedDataV[n-1] for n in range(1,len(storedDataV))]
-        abs_smadiff = [abs(ele) for ele in listVdiff]
-        i = 0
-        while i < len(abs_smadiff)- window_size+1:
-            window = abs_smadiff[i : i + window_size]
-            window_average = sum(window)/window_size
-            sma_listVdiff.append(window_average)
-            i+=1
-
-        def Average (sma_listVdiff):
-            return sum(sma_listVdiff)/len(sma_listVdiff)	
-        E = Average(sma_listVdiff)
-        value.append(E)      
+        value.append(moving_averageI(I, 200))
+        value.append(moving_averageV(value[0], 200)) 
     return value
 
 def set_power_supply():
@@ -118,13 +109,13 @@ cycle_number = 0
 def save_file_charge(file):
     value = readdaq()
     valuestr = ','.join(map(str,value))
-    file.write(str(valuestr)+','+str(run_time())+','+str(time.time() - inicio)+','+str(power_supply.supply_voltage())+','+str(power_supply.supply_current())+','+str(temp.decode('utf-8')))
+    file.write(str(valuestr)+','+str(E)+','+str(run_time())+','+str(time.time() - inicio)+','+str(power_supply.supply_voltage())+','+str(power_supply.supply_current())+','+str(temp.decode('utf-8')))
     file.flush()
 
 def save_file_discharge(file):
     value = readdaq()
     valuestr = ','.join(map(str,value))
-    file.write(str(valuestr)+','+str(run_time())+','+str(time.time() - inicio)+','+str(electronic_load.eload_voltage())+','+str(electronic_load.eload_current())+','+str(temp.decode('utf-8')))
+    file.write(str(valuestr)+','+str(E)+','+str(run_time())+','+str(time.time() - inicio)+','+str(electronic_load.eload_voltage())+','+str(electronic_load.eload_current())+','+str(temp.decode('utf-8')))
     file.flush()      
 
 file = open("SOC" + "_"+ run_time() + '.txt', 'w', newline='')
@@ -137,45 +128,71 @@ for i in range(N_MEASUREMENTS):
 file.close()
  
 while cycle_number < CYCLES:
-
     #CARGA
-    set_power_supply()        
+    set_power_supply()   
+    power_supply.on()    
+    time.sleep(6) 
     file = open("CARGA" + "_" + str(cycle_number)+ "_"+ run_time() + '.txt', 'w', newline='')
     file.write(DATA_LINE_CHARGE + '\n')
-    power_supply.on()
-    values = readdaq()
-    time.sleep(3)
-    while values[2] > I_MIN:
+    value = readdaq()
+    print(value[2])
+     
+    while value[2] > I_MIN:
+        listVdiff = [storedDataV[n]-storedDataV[n-1] for n in range(1,len(storedDataV))]
+        abs_smadiff = [abs(ele) for ele in listVdiff]
+        def Average (abs_smadiff):
+           return sum(abs_smadiff)/len(abs_smadiff)
+        E = Average(abs_smadiff)
+        print(E)
         temp = ser.readline ()
         save_file_charge(file)
     power_supply.off()  
 
     save_file_charge(file)
-
+    listVdiff = [storedDataV[n]-storedDataV[n-1] for n in range(1,len(storedDataV))]
+    abs_smadiff = [abs(ele) for ele in listVdiff]
+    def Average (abs_smadiff):
+        return sum(abs_smadiff)/len(abs_smadiff)
+    E = Average(abs_smadiff)
     #ESTABILIZACIÓN
-    while values[4]> V_E:
+    while E > V_E:
+        listVdiff = [storedDataV[n]-storedDataV[n-1] for n in range(1,len(storedDataV))]
+        abs_smadiff = [abs(ele) for ele in listVdiff]
+        def Average (abs_smadiff):
+           return sum(abs_smadiff)/len(abs_smadiff)
+        E = Average(abs_smadiff)
+        print(E)
         temp = ser.readline () 
         save_file_charge(file) 
-        print(values[4])
+        print(E)
 
     file.close() 
-
     file = open("DESCARGA" + "_" + str(cycle_number)+ "_"+ run_time() + '.txt', 'w', newline='')
     file.write(DATA_LINE_DISCHARGE + '\n')
     set_electronic_load()
     electronic_load.on()
 
     #DESCARGA
-    while values[0] > V_MIN:
+    while value[0] > V_MIN:
+        listVdiff = [storedDataV[n]-storedDataV[n-1] for n in range(1,len(storedDataV))]
+        abs_smadiff = [abs(ele) for ele in listVdiff]
+        def Average (abs_smadiff):
+           return sum(abs_smadiff)/len(abs_smadiff)
+        E = Average(abs_smadiff)
+        print(E)
         temp = ser.readline ()
         save_file_discharge(file)   
     electronic_load.off()  
          
-    while values[4] > V_E:
+    while E > V_E:
+        listVdiff = [storedDataV[n]-storedDataV[n-1] for n in range(1,len(storedDataV))]
+        abs_smadiff = [abs(ele) for ele in listVdiff]
+        def Average (abs_smadiff):
+           return sum(abs_smadiff)/len(abs_smadiff)
+        E = Average(abs_smadiff)
+        print(E)
         temp = ser.readline ()
         save_file_discharge(file)  
   
     file.close()     
     cycle_number=+1 
-power_supply.off
-electronic_load.off
