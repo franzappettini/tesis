@@ -1,0 +1,15 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: tesis
+message: >-
+  Please cite this software using the metadata from
+  'preferred-citation'.
+type: software
+authors:
+  - given-names: Fran
+    name-particle: Francisca
+    family-names: Zappettini
+    email: fran.zappettini@gmail.com
+    orcid: 'https://orcid.org/0000-0002-0954-6064'
