@@ -8,4 +8,5 @@ This program cycles a battery for testing purposes using a Rigol DP832 power sup
 
 Cycle profiles can be modified in config.ini file
 
-
+## license 
+This project is licensed under the MIT License - see the LICENCE.txt file for details
